@@ -9,7 +9,8 @@
 #define STRIP_PER_WEDGE  5
 #define WEDGE_PER_MACHINE 12
 #define WORDS_IN_FRAMEBUFFER (LED_PER_STRIP * STRIP_PER_WEDGE * WEDGE_PER_MACHINE)
-#define LED_FREQ 800000
+#define LED_FREQ 871000
+#define DWELL_TIME 64
 #define LED_PIN 1
 
 void ws2812_pio_init(PIO pio, uint sm, uint freq, uint pin) {
@@ -23,7 +24,7 @@ void ws2812_pio_init(PIO pio, uint sm, uint freq, uint pin) {
     sm_config_set_in_pin_count(&c, 1);
     sm_config_set_jmp_pin(&c, pin);
     sm_config_set_in_shift(&c, false, true, 24);
-    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_NONE);
 
     int cycles_per_bit = T1 + T2 + T3;
     float div = clock_get_hz(clk_sys) / (freq * cycles_per_bit);
@@ -51,6 +52,7 @@ void ws2812_pio_capture_frame(PIO pio, uint sm, uint dma_channel, uint32_t* dst,
         true
     );
 
+    pio_sm_put(pio, sm, DWELL_TIME);
     pio_sm_set_enabled(pio, sm, true);
 }
 
@@ -67,15 +69,17 @@ int main()
     printf("Init done\n");
 
     static uint32_t framebuffer[WORDS_IN_FRAMEBUFFER] = { 0 };
+    static uint32_t framebuffer2[WORDS_IN_FRAMEBUFFER] = { 0 };
+    bool in_side = false;
 
     while (true) {
-        ws2812_pio_capture_frame(pio, sm, dma_channel, framebuffer, WORDS_IN_FRAMEBUFFER);
-        dma_channel_wait_for_finish_blocking(dma_channel);
+        ws2812_pio_capture_frame(pio, sm, dma_channel, in_side ? framebuffer2 : framebuffer, WORDS_IN_FRAMEBUFFER);
         printf("Cap = ");
-        for(int i = 0; i < LED_PER_STRIP; i++) {
-            printf("%06x ", framebuffer[i]);
+        for(int i = 0; i < LED_PER_STRIP * 2; i++) {
+            printf("%06x ", (in_side ? framebuffer : framebuffer2)[i]);
         }
         printf("\n");
-        sleep_ms(10);
+        dma_channel_wait_for_finish_blocking(dma_channel);
+        in_side = !in_side;
     }
 }

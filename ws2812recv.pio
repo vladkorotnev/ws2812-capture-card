@@ -19,20 +19,19 @@
     ; Now input is low
     ; but what if it's just because we were in the middle of a frame?
     ; Ensure we have a good idle time before proceeding
+    pull
 ensure_idle:
-    set X, 31
+    mov X, osr
 ensure_idle_loop:
-    set Y, 10
+    set Y, 31
 wait_idle:
     wait 0 pin 0
     jmp pin ensure_idle ; we encountered a high, so restart waiting again
     jmp Y-- wait_idle ; inner loop 32 times
     jmp X-- ensure_idle_loop ; outer loop 32 times
 
-no_wait:
     ; Now we have sure been idling for a while
     ; Ready to receive 24 bits (single pixel color)
-    set Y, 24
 wait_bit_start:
     wait 1 pin 0 ; Wait for start of bit
     nop [T1 - 1] ; Delay for duration we know is gonna be high
@@ -49,7 +48,5 @@ it_was_high:
 wait_bit_end:
     ; Wait for the low time to begin
     wait 0 pin 0
-    ; If we have more bits to receive, do that
-    jmp Y-- wait_bit_start
-    ; At here we have 24 bits (1 pixel) received
-    jmp wait_bit_start ; just move on and on and let autopush do its thing?
+    ; Again and again
+    jmp wait_bit_start
