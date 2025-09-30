@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include "pico/stdlib.h"
+#include "hardware/pio.h"
+#include "hardware/clocks.h"
+#include "hardware/dma.h"
+#include "ws2812recv.pio.h"
+
+#define LED_PER_STRIP  8
+#define STRIP_PER_WEDGE  5
+#define WEDGE_PER_MACHINE 12
+#define WORDS_IN_FRAMEBUFFER (LED_PER_STRIP * STRIP_PER_WEDGE * WEDGE_PER_MACHINE)
+#define LED_FREQ 800000
+#define LED_PIN 1
+
+void ws2812_pio_init(PIO pio, uint sm, uint freq, uint pin) {
+    pio_gpio_init(pio, pin);
+    pio_sm_set_consecutive_pindirs(pio, sm, pin, 1, false);
+
+    uint offset = pio_add_program(pio, &ws2812in_program);
+
+    pio_sm_config c = pio_get_default_sm_config();
+    sm_config_set_in_pin_base(&c, pin);
+    sm_config_set_in_pin_count(&c, 1);
+    sm_config_set_jmp_pin(&c, pin);
+    sm_config_set_in_shift(&c, false, true, 24);
+    sm_config_set_fifo_join(&c, PIO_FIFO_JOIN_RX);
+
+    int cycles_per_bit = T1 + T2 + T3;
+    float div = clock_get_hz(clk_sys) / (freq * cycles_per_bit);
+    sm_config_set_clkdiv(&c, div);
+
+    pio_sm_init(pio, sm, offset, &c);
+}
+
+void ws2812_pio_capture_frame(PIO pio, uint sm, uint dma_channel, uint32_t* dst, size_t count) {
+    pio_sm_set_enabled(pio, sm, false);
+    pio_sm_clear_fifos(pio, sm);
+    pio_sm_restart(pio, sm);
+
+    dma_channel_config d = dma_channel_get_default_config(dma_channel);
+    channel_config_set_read_increment(&d, false);
+    channel_config_set_write_increment(&d, true);
+    channel_config_set_dreq(&d, pio_get_dreq(pio, sm, false));
+    
+    dma_channel_configure(
+        dma_channel,
+        &d,
+        dst,
+        &pio->rxf[sm],
+        count,
+        true
+    );
+
+    pio_sm_set_enabled(pio, sm, true);
+}
+
+int main()
+{
+    stdio_init_all();
+
+    PIO pio = pio0;
+    uint sm = pio_claim_unused_sm(pio, true);
+    uint dma_channel = dma_claim_unused_channel(true);
+    uint pin = LED_PIN;
+    uint freq = LED_FREQ;
+    ws2812_pio_init(pio, sm, freq, pin);
+    printf("Init done\n");
+
+    static uint32_t framebuffer[WORDS_IN_FRAMEBUFFER] = { 0 };
+
+    while (true) {
+        ws2812_pio_capture_frame(pio, sm, dma_channel, framebuffer, WORDS_IN_FRAMEBUFFER);
+        dma_channel_wait_for_finish_blocking(dma_channel);
+        printf("Cap = ");
+        for(int i = 0; i < LED_PER_STRIP; i++) {
+            printf("%06x ", framebuffer[i]);
+        }
+        printf("\n");
+        sleep_ms(10);
+    }
+}
