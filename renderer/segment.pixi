@@ -1,0 +1,21 @@
+
+fn draw_segment( $strip, $pos, $color ) {
+    inner_radius = (WINDOW_YSIZE / 8) + (LEDS_PER_STRIP - 1 - $pos) * 20
+    outer_radius = inner_radius + (WINDOW_YSIZE / 2) / LEDS_PER_STRIP
+    angle_per_strip = 360.0 / TOTAL_STRIPS
+    start_angle = $strip * angle_per_strip
+    end_angle = start_angle + angle_per_strip - (1.0/($pos + 1))
+
+    // convert to radians
+    start_angle = 2 * M_PI * start_angle / 360
+    end_angle = 2 * M_PI * end_angle / 360
+    sin_step = M_PI / LINES_PER_SECTOR / ($pos + 1)
+
+    for (x = start_angle; x < end_angle; x + sin_step) {
+        sx = cos(x) * inner_radius
+        sy = sin(x) * inner_radius
+        ex = cos(x) * outer_radius
+        ey = sin(x) * outer_radius
+        line(sx, sy, ex, ey, $color)
+    }    
+}

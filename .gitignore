@@ -1,2 +1,5 @@
 build
 !.vscode/*
+renderer/pixilang.app
+renderer/pixilang*.exe
+renderer/pixilang_log.txt

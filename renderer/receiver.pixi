@@ -1,0 +1,62 @@
+RECV_HANDLE = NULL
+
+RECV_MARKER_BYTE1 = 0x55
+RECV_MARKER_BYTE2 = 0xEE
+RECV_MARKER_BYTE3 = 0xAA
+
+fn open_receiver($port) {
+    logf("open %s\n", $port)
+    RECV_HANDLE = fopen($port, "rb")
+    if RECV_HANDLE == NULL {
+        printf("Error opening port %s\n", $port);
+        halt
+    }
+    logf("success\n")
+}
+
+    buf = new(4096, 1, INT8)
+
+fn receiver_get_frame($sbuf) {
+    if feof(RECV_HANDLE) { halt }
+    // logf("wait packet\n")
+wait_recv_marker:
+    c = fgetc(RECV_HANDLE)
+    if c != RECV_MARKER_BYTE1 { goto wait_recv_marker }
+    c = fgetc(RECV_HANDLE)
+    if c != RECV_MARKER_BYTE2 { goto wait_recv_marker }
+    c = fgetc(RECV_HANDLE)
+    if c != RECV_MARKER_BYTE3 { goto wait_recv_marker }
+
+    // received marker, now comes 16 bit size in bytes
+    dsz = (fgetc(RECV_HANDLE) << 8)
+    dsz = (dsz | fgetc(RECV_HANDLE))
+
+    //   logf("Packet: %i bytes\n", dsz)
+
+    pos = 0
+    while pos < dsz {
+        read_count = fread(buf, dsz, RECV_HANDLE, pos)
+        if read_count < 0 {
+            logf("... but read only %i - abort !\n", read_count)
+            halt
+        }
+        pos + read_count
+    }
+
+
+    strip = 0
+    pos = 0
+
+    for(dpos = 0; dpos < dsz - 2; ) {
+        $sbuf[strip, pos] = get_color( buf[dpos + 1] & 0xFF, buf[dpos + 2] & 0xFF, buf[dpos] & 0xFF)
+        dpos + 4
+        pos + 1
+        if pos >= LEDS_PER_STRIP {
+            pos = 0
+            strip + 1
+            if strip >= TOTAL_STRIPS {
+                break
+            }
+        }
+    }
+}

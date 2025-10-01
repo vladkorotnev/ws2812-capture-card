@@ -1,0 +1,45 @@
+include "consts.pixi"
+include "segment.pixi"
+include "receiver.pixi"
+
+logf("Well hello there!\n")
+set_pixel_size( WINDOW_XSIZE / 480 )
+vsync(1)
+
+SEGMENTS = new( TOTAL_STRIPS, LEDS_PER_STRIP, INT32 )
+clean( SEGMENTS, WHITE )
+IS_SEGMENTS_DIRTY = 1
+
+open_receiver(PORT)
+
+fn gl_callback( $userdata )
+{
+    if IS_SEGMENTS_DIRTY {
+        set_screen( GL_SCREEN ) //Enable OpenGL drawing mode
+        clear(BLACK)
+
+        t_rotate(90, 0, 0, 1)
+        for (strip = 0; strip < TOTAL_STRIPS; strip + 1) {
+            for (seg = 0; seg < LEDS_PER_STRIP; seg + 1) {
+                draw_segment(strip, seg, SEGMENTS[strip, seg])
+            }
+        }
+        t_reset()
+
+        set_screen( 0 ) //Back to the default screen
+        // IS_SEGMENTS_DIRTY = 0
+    }
+}
+
+set_gl_callback( 
+    gl_callback, 
+    0 )
+
+start:
+//  while( get_event() ) { if EVT[ EVT_TYPE ] == EVT_QUIT { halt } }
+start_timer(0)
+receiver_get_frame(SEGMENTS)
+x=get_timer(0)
+if x > 0 { logf("took %i ticks\n", x) }
+frame()
+go start
