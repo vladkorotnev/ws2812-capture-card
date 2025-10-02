@@ -11,7 +11,7 @@
 #define WORDS_IN_FRAMEBUFFER (LED_PER_STRIP * STRIP_PER_WEDGE * WEDGE_PER_MACHINE)
 #define LED_FREQ 2000000
 // The threshold of L time to determine we are definitely at start of a new frame
-#define DWELL_TIME 1024
+#define DWELL_TIME 2048
 #define LED_PIN 1
 
 uint _pio_offset = 0;

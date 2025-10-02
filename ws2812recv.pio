@@ -8,7 +8,7 @@
 ; side 1    - H: sampling, L: waiting
 
 ; Guaranteed High duration
-.define public T1 24
+.define public T1 20
 ; Value duration
 .define public T2 5
 ; Low duration
@@ -36,13 +36,13 @@ ensure_idle_loop:
 wait_bit_start:
     wait 1 pin 0 side 0b11 ; Wait for start of bit 
     ; Delay for duration we know is gonna be high
+    set X, 12
+hi_loop:
     nop [3]
-    nop [3]
-    nop [3]
-    nop [3]
-    nop [3]
-    nop [3]
+    jmp X-- hi_loop
 
+
+; `in pins` is somehow not suitable here and makes for worse results
     jmp pin yes
     set X, 0
     in X, 1
