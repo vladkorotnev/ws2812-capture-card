@@ -4,33 +4,54 @@
 ; PIN MAPPING
 ;   0       - data input
 ; jmp       - SAME PIN AS ABOVE
+; side 0    - H: waiting for frame, L: inputting
+; side 1    - H: sampling, L: waiting
 
 ; Guaranteed High duration
-.define public T1 16
+.define public T1 24
 ; Value duration
 .define public T2 5
 ; Low duration
 .define public T3 3
 
 .program ws2812in
+.side_set 2 opt
     ; Input cycle start
-    mov ISR, NULL 
+    mov ISR, NULL side 0b11
     pull
+    wait 0 pin 0
+encountered_high:
+    mov X, OSR
 ensure_idle:
-    mov X, osr
-    wait 0 gpio 1
+    set Y, 31
+inner_loop:
+    jmp pin encountered_high ; we encountered a high, so restart waiting again
+    jmp Y-- inner_loop
 ensure_idle_loop:
-    jmp pin ensure_idle ; we encountered a high, so restart waiting again
-    jmp X-- ensure_idle_loop ; outer loop
-
+    jmp X-- ensure_idle ; outer loop
     ; Now we have sure been idling for a while
     ; Ready to receive next frame
+.wrap_target
+
 wait_bit_start:
-    wait 1 gpio 1 ; Wait for start of bit
-    nop [T1 - 1] ; Delay for duration we know is gonna be high
-    in pins, 1
-wait_bit_end:
+    wait 1 pin 0 side 0b11 ; Wait for start of bit 
+    ; Delay for duration we know is gonna be high
+    nop [3]
+    nop [3]
+    nop [3]
+    nop [3]
+    nop [3]
+    nop [3]
+
+    jmp pin yes
+    set X, 0
+    in X, 1
+    jmp oof
+yes:
+    set X, 1
+    in X, 1
+oof:
     ; Wait for the low time to begin
-    wait 0 pin 0
+    wait 0 pin 0 side 0b11 
     ; Again and again
-    jmp wait_bit_start
+.wrap

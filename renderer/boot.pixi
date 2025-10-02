@@ -15,6 +15,21 @@ open_receiver(PORT)
 fn gl_callback( $userdata )
 {
     if IS_SEGMENTS_DIRTY {
+        strip = 0
+    pos = 0
+
+    for(dpos = 0; dpos < dsz - 2; ) {
+        SEGMENTS[strip, pos] = get_color( buf[dpos + 1] & 0xFF, buf[dpos + 2] & 0xFF, buf[dpos] & 0xFF)
+        dpos + 4
+        pos + 1
+        if pos >= LEDS_PER_STRIP {
+            pos = 0
+            strip + 1
+            if strip >= TOTAL_STRIPS {
+                break
+            }
+        }
+    }
         set_screen( GL_SCREEN ) //Enable OpenGL drawing mode
         clear(BLACK)
 
@@ -37,9 +52,6 @@ set_gl_callback(
 
 start:
 //  while( get_event() ) { if EVT[ EVT_TYPE ] == EVT_QUIT { halt } }
-start_timer(0)
 receiver_get_frame(SEGMENTS)
-x=get_timer(0)
-if x > 0 { logf("took %i ticks\n", x) }
 frame()
 go start

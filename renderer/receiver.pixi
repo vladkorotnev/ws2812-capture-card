@@ -15,6 +15,7 @@ fn open_receiver($port) {
 }
 
     buf = new(4096, 1, INT8)
+    dsz = 0
 
 fn receiver_get_frame($sbuf) {
     if feof(RECV_HANDLE) { halt }
@@ -41,22 +42,5 @@ wait_recv_marker:
             halt
         }
         pos + read_count
-    }
-
-
-    strip = 0
-    pos = 0
-
-    for(dpos = 0; dpos < dsz - 2; ) {
-        $sbuf[strip, pos] = get_color( buf[dpos + 1] & 0xFF, buf[dpos + 2] & 0xFF, buf[dpos] & 0xFF)
-        dpos + 4
-        pos + 1
-        if pos >= LEDS_PER_STRIP {
-            pos = 0
-            strip + 1
-            if strip >= TOTAL_STRIPS {
-                break
-            }
-        }
     }
 }
